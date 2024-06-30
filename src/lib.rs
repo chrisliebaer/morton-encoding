@@ -722,10 +722,12 @@ where
 		Coordinate: ToPrimitive + PrimInt,
 		Key: ValidKey<Coordinate>,
 {
-	input
-			.iter()
-			.map(|&m| bloat_custom::<Coordinate, Key, N>(m))
-			.fold(Key::zero(), |acc, x| (acc << 1) | x)
+	let mut key = Key::zero();
+	for i in 0..N {
+		let bloat = bloat_custom::<Coordinate, Key, N>(input[i]);
+		key = (key << 1) | bloat;
+	}
+	key
 }
 
 /// The most ergonomic way to perform the Morton encoding operation.
