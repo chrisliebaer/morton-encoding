@@ -3,11 +3,11 @@
 //! thereby creating a so-called “Morton encoding” (also known as a
 //! “Z-order encoding”) in whose final result (“Key”)
 //! all bits of the same significance are together.
-//! This is helpful for linearising the points 
+//! This is helpful for linearising the points
 //! of data structures whilst preserving
 //! some measure of locality. Z-order encoding isn't as good at preserving
 //! locality as Hilbert encoding, but it is much easier to compute.
-//! (For Hilbert encoding please refer to the 
+//! (For Hilbert encoding please refer to the
 //! ([`lindel`](https://crates.io/crates/lindel)
 //! crate instead.)
 //!
@@ -25,17 +25,17 @@
 //! let reassembled_input = morton_decode(output);
 //! assert_eq!(input, reassembled_input);
 //! ```
-//! 
+//!
 //! 2. If 128 bits are not enough, the user should use
 //! [`lindel`](https://crates.io/crates/lindel),
 //! which contains the `create_lineariseable_data_type` macro. This
 //! will unfortunately require manual implementation of any trait that
 //! the macro doesn't implement automatically, such as subtraction.
-//! 
+//!
 //! 3. If the co-ordinates come at the end of a long iterator chain of length
 //! `<=8`, the user should use the `_generic` functions, taking care to not
 //! compare Keys resulting from unequal-length iterators.
-//! 
+//!
 //! 4. Finally, if performance is of no concern at all, the user can make use
 //! of the `arbitrary_bit_size` module or of the `_generic` functions for
 //! arbitrary iterator length.
@@ -58,12 +58,12 @@
 //! the user needs to use `BigUint`s. Currently, the crate
 //! (or its documentation, in any event) has currently been compiled with `std`
 #![cfg_attr(
-    feature = "std",
-    doc = " **on**, meaning that it can interleave arbitrary amounts of arbitrarily large integers, as long as the user only runs it within an operating system."
+	feature = "std",
+	doc = " **on**, meaning that it can interleave arbitrary amounts of arbitrarily large integers, as long as the user only runs it within an operating system."
 )]
 #![cfg_attr(
-    not(feature = "std"),
-    doc = " **off**, meaning that it can be used even in embedded environments, but will demand home-made `uint` types if 128 bits are not enough for the user."
+	not(feature = "std"),
+	doc = " **off**, meaning that it can be used even in embedded environments, but will demand home-made `uint` types if 128 bits are not enough for the user."
 )]
 //!
 //!
@@ -191,22 +191,22 @@ macro_rules! sizeof {
 }
 
 /// A convenience function.
-/// 
+///
 /// Persuades the compiler that a non-zero value is, in fact, non-zero.
 ///
 /// Will (unsurprisingly) panic if called with a zero.
 pub fn nz(x: usize) -> SizeRatio {
-    SizeRatio::new(x).unwrap()
+	SizeRatio::new(x).unwrap()
 }
 
 fn fits_n_times<A, B>(n: SizeRatio) -> bool {
-    sizeof!(A) >= n.get() * sizeof!(B)
+	sizeof!(A) >= n.get() * sizeof!(B)
 }
 
 /// An 8-bit co-ordinate requires 3 steps, regardless of the size ratio.
 /// For every doubling of its bits, another step is required.
 fn ceil_of_log2_of_coor_bits<Coor>() -> u32 {
-    (sizeof!(Coor) * 8).next_power_of_two().trailing_zeros()
+	(sizeof!(Coor) * 8).next_power_of_two().trailing_zeros()
 }
 
 /// Let `x = 1<<step_number`, and `y = x * (siz_rat - 1)`.
@@ -225,35 +225,35 @@ fn ceil_of_log2_of_coor_bits<Coor>() -> u32 {
 /// optimised away.
 fn get_mask<Key>(step_number: usize, siz_rat: SizeRatio) -> Key
 where
-    Key: PrimInt + BitOrAssign + ShlAssign<usize>,
+		Key: PrimInt + BitOrAssign + ShlAssign<usize>,
 {
-    let siz_rat = siz_rat.get();
-    let tentative_mask = {
-        let key_bits = sizeof!(Key) * 8;
-        let one_1 = Key::one();
-        let amount_of_1s_per_pattern = 1 << step_number;
-        let pattern_length = siz_rat * amount_of_1s_per_pattern;
-        let pattern = (one_1 << amount_of_1s_per_pattern) - one_1;
-        let mut insert_patterns_here: Key = pattern;
-        let amt_of_patterns_that_fit_in_key = key_bits / pattern_length;
-        let amt_of_patterns_we_still_need_to_insert = amt_of_patterns_that_fit_in_key - 1;
-        for _ in 0..amt_of_patterns_we_still_need_to_insert {
-            insert_patterns_here <<= pattern_length;
-            insert_patterns_here |= pattern;
-        }
-        insert_patterns_here
-    };
+	let siz_rat = siz_rat.get();
+	let tentative_mask = {
+		let key_bits = sizeof!(Key) * 8;
+		let one_1 = Key::one();
+		let amount_of_1s_per_pattern = 1 << step_number;
+		let pattern_length = siz_rat * amount_of_1s_per_pattern;
+		let pattern = (one_1 << amount_of_1s_per_pattern) - one_1;
+		let mut insert_patterns_here: Key = pattern;
+		let amt_of_patterns_that_fit_in_key = key_bits / pattern_length;
+		let amt_of_patterns_we_still_need_to_insert = amt_of_patterns_that_fit_in_key - 1;
+		for _ in 0..amt_of_patterns_we_still_need_to_insert {
+			insert_patterns_here <<= pattern_length;
+			insert_patterns_here |= pattern;
+		}
+		insert_patterns_here
+	};
 
-    let masking_is_necessary = {
-        let usize_bits = 8 * (sizeof!(usize) as u32);
-        let floor_of_log2_of_siz_rat = usize_bits - siz_rat.leading_zeros() - 1;
-        ((step_number as u32) % floor_of_log2_of_siz_rat) == 0
-    };
-    if masking_is_necessary {
-        tentative_mask
-    } else {
-        Key::max_value()
-    }
+	let masking_is_necessary = {
+		let usize_bits = 8 * (sizeof!(usize) as u32);
+		let floor_of_log2_of_siz_rat = usize_bits - siz_rat.leading_zeros() - 1;
+		((step_number as u32) % floor_of_log2_of_siz_rat) == 0
+	};
+	if masking_is_necessary {
+		tentative_mask
+	} else {
+		Key::max_value()
+	}
 }
 
 /// Guarantees that a given data structure is suitable for a Morton Key.
@@ -265,120 +265,118 @@ where
 /// assert that a `Key` value is at least `N` times larger than a `Coor`
 /// value, but as of current (1.50) Rust this is not possible.
 pub trait ValidKey<Coor>:
-    PrimInt + From<Coor> + BitOrAssign + BitAndAssign + ShlAssign<usize>
-{
-}
+PrimInt + From<Coor> + BitOrAssign + BitAndAssign + ShlAssign<usize>
+{}
 /// All primitive int types are suitable for Morton Keys.
 impl<Coor, Key: PrimInt + From<Coor> + BitOrAssign + BitAndAssign + ShlAssign<usize>> ValidKey<Coor>
-    for Key
-{
-}
+for Key
+{}
 
 /// Given a data type and a number, it yields the smallest unsigned
 /// integer that's at least `N` times larger.
-/// 
+///
 /// Implemented by brute force.
 pub trait IdealKey<const N: usize> {
-    type Key;
+	type Key;
 }
 
 // UGLY WORK-AROUND, HOOOOOOOO!
 impl IdealKey<1> for u8 {
-    type Key = u8;
+	type Key = u8;
 }
 impl IdealKey<2> for u8 {
-    type Key = u16;
+	type Key = u16;
 }
 impl IdealKey<3> for u8 {
-    type Key = u32;
+	type Key = u32;
 }
 impl IdealKey<4> for u8 {
-    type Key = u32;
+	type Key = u32;
 }
 impl IdealKey<5> for u8 {
-    type Key = u64;
+	type Key = u64;
 }
 impl IdealKey<6> for u8 {
-    type Key = u64;
+	type Key = u64;
 }
 impl IdealKey<7> for u8 {
-    type Key = u64;
+	type Key = u64;
 }
 impl IdealKey<8> for u8 {
-    type Key = u64;
+	type Key = u64;
 }
 impl IdealKey<9> for u8 {
-    type Key = u128;
+	type Key = u128;
 }
 impl IdealKey<10> for u8 {
-    type Key = u128;
+	type Key = u128;
 }
 impl IdealKey<11> for u8 {
-    type Key = u128;
+	type Key = u128;
 }
 impl IdealKey<12> for u8 {
-    type Key = u128;
+	type Key = u128;
 }
 impl IdealKey<13> for u8 {
-    type Key = u128;
+	type Key = u128;
 }
 impl IdealKey<14> for u8 {
-    type Key = u128;
+	type Key = u128;
 }
 impl IdealKey<15> for u8 {
-    type Key = u128;
+	type Key = u128;
 }
 impl IdealKey<16> for u8 {
-    type Key = u128;
+	type Key = u128;
 }
 
 impl IdealKey<1> for u16 {
-    type Key = u16;
+	type Key = u16;
 }
 impl IdealKey<2> for u16 {
-    type Key = u32;
+	type Key = u32;
 }
 impl IdealKey<3> for u16 {
-    type Key = u64;
+	type Key = u64;
 }
 impl IdealKey<4> for u16 {
-    type Key = u64;
+	type Key = u64;
 }
 impl IdealKey<5> for u16 {
-    type Key = u128;
+	type Key = u128;
 }
 impl IdealKey<6> for u16 {
-    type Key = u128;
+	type Key = u128;
 }
 impl IdealKey<7> for u16 {
-    type Key = u128;
+	type Key = u128;
 }
 impl IdealKey<8> for u16 {
-    type Key = u128;
+	type Key = u128;
 }
 
 impl IdealKey<1> for u32 {
-    type Key = u32;
+	type Key = u32;
 }
 impl IdealKey<2> for u32 {
-    type Key = u64;
+	type Key = u64;
 }
 impl IdealKey<3> for u32 {
-    type Key = u128;
+	type Key = u128;
 }
 impl IdealKey<4> for u32 {
-    type Key = u128;
+	type Key = u128;
 }
 
 impl IdealKey<1> for u64 {
-    type Key = u64;
+	type Key = u64;
 }
 impl IdealKey<2> for u64 {
-    type Key = u128;
+	type Key = u128;
 }
 
 impl IdealKey<1> for u128 {
-    type Key = u128;
+	type Key = u128;
 }
 
 /// “Bloats” a given number by interleaving its bits with zeroes.
@@ -406,21 +404,21 @@ impl IdealKey<1> for u128 {
 /// needed.
 pub fn bloat_custom<Coor, Key, const N: usize>(x: Coor) -> Key
 where
-    Coor: ToPrimitive,
-    Key: ValidKey<Coor>,
+		Coor: ToPrimitive,
+		Key: ValidKey<Coor>,
 {
-    //static_assertions::const_assert!(fitsntimes::<Key, Coor, {N}>());
-    assert!(N > 0, "N must not equal zero!");
-    assert!(
-        sizeof!(Key) >= N * sizeof!(Coor),
-        "Key value is not big enough for {} Coordinate values!",
-        N
-    );
-    bloat_custom_checked(x, nz(N)).unwrap()
+	//static_assertions::const_assert!(fitsntimes::<Key, Coor, {N}>());
+	assert!(N > 0, "N must not equal zero!");
+	assert!(
+		sizeof!(Key) >= N * sizeof!(Coor),
+		"Key value is not big enough for {} Coordinate values!",
+		N
+	);
+	bloat_custom_checked(x, nz(N)).unwrap()
 }
 
 /// Fallibly “bloats” a given number, interleaving its bits with zeroes.
-/// 
+///
 /// Returns an `Option`.
 ///
 /// Each input bit is interleaved with `siz_rat - 1` zeroes.
@@ -430,7 +428,7 @@ where
 /// This function is usable when the size ratio is computed at run-time,
 /// but bear in mind that it might run much more slowly than its
 /// compile-time counterparts.
-///  
+///
 /// # Examples
 /// ```
 /// # use morton_encoding::bloat_custom_checked;
@@ -440,31 +438,31 @@ where
 /// ```
 pub fn bloat_custom_checked<Coor, Key>(x: Coor, siz_rat: SizeRatio) -> Option<Key>
 where
-    Coor: ToPrimitive,
-    Key: ValidKey<Coor>,
+		Coor: ToPrimitive,
+		Key: ValidKey<Coor>,
 {
-    if !fits_n_times::<Key, Coor>(siz_rat) {
-        return None;
-    }
+	if !fits_n_times::<Key, Coor>(siz_rat) {
+		return None;
+	}
 
-    let mut result: Key = From::from(x);
-    if siz_rat.get() == 1 {
-        return Some(result);
-    }
+	let mut result: Key = From::from(x);
+	if siz_rat.get() == 1 {
+		return Some(result);
+	}
 
-    let shift_bitor_mask = |x: &mut Key, y| {
-        let shift_amt = (siz_rat.get() - 1) << y;
-        *x |= *x << shift_amt;
-        (*x) &= get_mask(y, siz_rat)
-    };
+	let shift_bitor_mask = |x: &mut Key, y| {
+		let shift_amt = (siz_rat.get() - 1) << y;
+		*x |= *x << shift_amt;
+		(*x) &= get_mask(y, siz_rat)
+	};
 
-    let step_amount = ceil_of_log2_of_coor_bits::<Coor>();
+	let step_amount = ceil_of_log2_of_coor_bits::<Coor>();
 
-    (0..step_amount)
-        .rev()
-        .for_each(|q| shift_bitor_mask(&mut result, q as usize));
+	(0..step_amount)
+			.rev()
+			.for_each(|q| shift_bitor_mask(&mut result, q as usize));
 
-    Some(result)
+	Some(result)
 }
 
 /// “Shrinks” a given number, only keeping a user-provided amount of its bits.
@@ -498,13 +496,13 @@ where
 ///
 pub fn shrink_custom<Coor, Key, const N: usize>(x: Key) -> Coor
 where
-    Coor: ToPrimitive + PrimInt,
-    Key: ValidKey<Coor>,
+		Coor: ToPrimitive + PrimInt,
+		Key: ValidKey<Coor>,
 {
-    if N == 0 || sizeof!(Key) < N * sizeof!(Coor) {
-        panic!();
-    }
-    shrink_custom_checked(x, nz(N)).unwrap()
+	if N == 0 || sizeof!(Key) < N * sizeof!(Coor) {
+		panic!();
+	}
+	shrink_custom_checked(x, nz(N)).unwrap()
 }
 
 /// Fallibly “shrinks” a given number, only keeping a certain amount of its bits.
@@ -529,29 +527,29 @@ where
 /// ```
 pub fn shrink_custom_checked<Coor, Key>(x: Key, siz_rat: SizeRatio) -> Option<Coor>
 where
-    Coor: ToPrimitive + PrimInt,
-    Key: ValidKey<Coor>,
+		Coor: ToPrimitive + PrimInt,
+		Key: ValidKey<Coor>,
 {
-    if !fits_n_times::<Key, Coor>(siz_rat) {
-        return None;
-    }
+	if !fits_n_times::<Key, Coor>(siz_rat) {
+		return None;
+	}
 
-    let mut result: Key = x;
-    if siz_rat.get() == 1 {
-        return Coor::from(result);
-    }
+	let mut result: Key = x;
+	if siz_rat.get() == 1 {
+		return Coor::from(result);
+	}
 
-    let shift_bitor_mask = |x: &mut Key, y| {
-        (*x) &= get_mask(y, siz_rat);
-        let shift_amt = (siz_rat.get() - 1) << y;
-        *x |= *x >> shift_amt;
-    };
+	let shift_bitor_mask = |x: &mut Key, y| {
+		(*x) &= get_mask(y, siz_rat);
+		let shift_amt = (siz_rat.get() - 1) << y;
+		*x |= *x >> shift_amt;
+	};
 
-    let step_amount = ceil_of_log2_of_coor_bits::<Coor>();
+	let step_amount = ceil_of_log2_of_coor_bits::<Coor>();
 
-    (0..step_amount).for_each(|q| shift_bitor_mask(&mut result, q as usize));
+	(0..step_amount).for_each(|q| shift_bitor_mask(&mut result, q as usize));
 
-    Coor::from(result & (From::from(Coor::max_value())))
+	Coor::from(result & (From::from(Coor::max_value())))
 }
 
 /// Receives an iterator of `Coor` values and encodes them all in a `Key` value.
@@ -587,12 +585,12 @@ where
 /// ```
 pub fn morton_encode_generic<Coor, Key, Coors>(coors: Coors) -> Key
 where
-    Coor: ToPrimitive,
-    Key: ValidKey<Coor>,
-    Coors: IntoIterator<Item = Coor>,
-    <Coors as core::iter::IntoIterator>::IntoIter: ExactSizeIterator,
+		Coor: ToPrimitive,
+		Key: ValidKey<Coor>,
+		Coors: IntoIterator<Item=Coor>,
+		<Coors as core::iter::IntoIterator>::IntoIter: ExactSizeIterator,
 {
-    morton_encode_generic_checked(coors).unwrap()
+	morton_encode_generic_checked(coors).unwrap()
 }
 
 /// Receives an iterator of `Coor` values and encodes them all in a `Option<Key>` value.
@@ -608,33 +606,33 @@ where
 /// ```
 pub fn morton_encode_generic_checked<Coor, Key, Coors>(coors: Coors) -> Option<Key>
 where
-    Coor: ToPrimitive,
-    Key: ValidKey<Coor>,
-    Coors: IntoIterator<Item = Coor>,
-    <Coors as core::iter::IntoIterator>::IntoIter: ExactSizeIterator,
+		Coor: ToPrimitive,
+		Key: ValidKey<Coor>,
+		Coors: IntoIterator<Item=Coor>,
+		<Coors as core::iter::IntoIterator>::IntoIter: ExactSizeIterator,
 {
-    let iterator = coors.into_iter();
-    let siz_rat = SizeRatio::new(iterator.len())?;
-    if !fits_n_times::<Key, Coor>(siz_rat) {
-        None
-    } else {
-        Some({
-            let bloat_fn = |x| match siz_rat.get() {
-                1 => bloat_custom::<Coor, Key, 1>(x),
-                2 => bloat_custom::<Coor, Key, 2>(x),
-                3 => bloat_custom::<Coor, Key, 3>(x),
-                4 => bloat_custom::<Coor, Key, 4>(x),
-                5 => bloat_custom::<Coor, Key, 5>(x),
-                6 => bloat_custom::<Coor, Key, 6>(x),
-                7 => bloat_custom::<Coor, Key, 7>(x),
-                8 => bloat_custom::<Coor, Key, 8>(x),
-                _ => bloat_custom_checked::<Coor, Key>(x, siz_rat).unwrap(),
-            };
-            iterator
-                .map(bloat_fn)
-                .fold(Key::zero(), |acc, x| (acc << 1) | x)
-        })
-    }
+	let iterator = coors.into_iter();
+	let siz_rat = SizeRatio::new(iterator.len())?;
+	if !fits_n_times::<Key, Coor>(siz_rat) {
+		None
+	} else {
+		Some({
+			let bloat_fn = |x| match siz_rat.get() {
+				1 => bloat_custom::<Coor, Key, 1>(x),
+				2 => bloat_custom::<Coor, Key, 2>(x),
+				3 => bloat_custom::<Coor, Key, 3>(x),
+				4 => bloat_custom::<Coor, Key, 4>(x),
+				5 => bloat_custom::<Coor, Key, 5>(x),
+				6 => bloat_custom::<Coor, Key, 6>(x),
+				7 => bloat_custom::<Coor, Key, 7>(x),
+				8 => bloat_custom::<Coor, Key, 8>(x),
+				_ => bloat_custom_checked::<Coor, Key>(x, siz_rat).unwrap(),
+			};
+			iterator
+					.map(bloat_fn)
+					.fold(Key::zero(), |acc, x| (acc << 1) | x)
+		})
+	}
 }
 
 /// Receives a `Key` value and returns an iterator of `Coor` values that were decoded from it.
@@ -655,34 +653,34 @@ where
 /// ```
 pub fn morton_decode_generic<Coor, Key, Coors>(key: Key, siz_rat: SizeRatio) -> Coors
 where
-    Coor: ToPrimitive + PrimInt,
-    Key: ValidKey<Coor>,
-    Coors: core::iter::FromIterator<Coor>,
+		Coor: ToPrimitive + PrimInt,
+		Key: ValidKey<Coor>,
+		Coors: core::iter::FromIterator<Coor>,
 {
-    if !fits_n_times::<Key, Coor>(siz_rat) {
-        core::iter::empty().collect::<Coors>()
-    } else {
-        let shrink_fn = |x| match siz_rat.get() {
-            1 => shrink_custom::<Coor, Key, 1>(x),
-            2 => shrink_custom::<Coor, Key, 2>(x),
-            3 => shrink_custom::<Coor, Key, 3>(x),
-            4 => shrink_custom::<Coor, Key, 4>(x),
-            5 => shrink_custom::<Coor, Key, 5>(x),
-            6 => shrink_custom::<Coor, Key, 6>(x),
-            7 => shrink_custom::<Coor, Key, 7>(x),
-            8 => shrink_custom::<Coor, Key, 8>(x),
-            _ => shrink_custom_checked::<Coor, Key>(x, siz_rat).unwrap(),
-        };
-        let siz_rat = siz_rat.get();
-        (0..siz_rat)
-            .map(|x| key >> (siz_rat - (x + 1)))
-            .map(shrink_fn)
-            .collect::<Coors>()
-    }
+	if !fits_n_times::<Key, Coor>(siz_rat) {
+		core::iter::empty().collect::<Coors>()
+	} else {
+		let shrink_fn = |x| match siz_rat.get() {
+			1 => shrink_custom::<Coor, Key, 1>(x),
+			2 => shrink_custom::<Coor, Key, 2>(x),
+			3 => shrink_custom::<Coor, Key, 3>(x),
+			4 => shrink_custom::<Coor, Key, 4>(x),
+			5 => shrink_custom::<Coor, Key, 5>(x),
+			6 => shrink_custom::<Coor, Key, 6>(x),
+			7 => shrink_custom::<Coor, Key, 7>(x),
+			8 => shrink_custom::<Coor, Key, 8>(x),
+			_ => shrink_custom_checked::<Coor, Key>(x, siz_rat).unwrap(),
+		};
+		let siz_rat = siz_rat.get();
+		(0..siz_rat)
+				.map(|x| key >> (siz_rat - (x + 1)))
+				.map(shrink_fn)
+				.collect::<Coors>()
+	}
 }
 
 /// Encodes an array of `N` `Coordinates` into a `Key`.
-/// 
+///
 /// Receives an array of `N` values of `Coordinate` type (`[Coordinate; N]`),
 /// and encodes them all in a `Key` value. In the event that one `Key` is
 /// strictly larger than `N` `Coordinate`s, all significant bits are gathered
@@ -721,17 +719,17 @@ where
 /// ```
 pub fn morton_encode_array<Coordinate, Key, const N: usize>(input: [Coordinate; N]) -> Key
 where
-    Coordinate: ToPrimitive + PrimInt,
-    Key: ValidKey<Coordinate>,
+		Coordinate: ToPrimitive + PrimInt,
+		Key: ValidKey<Coordinate>,
 {
-    input
-        .iter()
-        .map(|&m| bloat_custom::<Coordinate, Key, N>(m))
-        .fold(Key::zero(), |acc, x| (acc << 1) | x)
+	input
+			.iter()
+			.map(|&m| bloat_custom::<Coordinate, Key, N>(m))
+			.fold(Key::zero(), |acc, x| (acc << 1) | x)
 }
 
 /// The most ergonomic way to perform the Morton encoding operation.
-/// 
+///
 /// Works for all primitive unsigned integers, and never panics for them.
 /// Will work for others if the user implements the `IdealKey`
 /// trait for them, but will panic if the trait is misimplemented.
@@ -745,17 +743,17 @@ where
 /// assert_eq!(morton_encode([0u32; 3]), 0u128);
 /// ```
 pub fn morton_encode<Coordinate, const N: usize>(
-    input: [Coordinate; N],
+	input: [Coordinate; N],
 ) -> <Coordinate as IdealKey<N>>::Key
 where
-    Coordinate: IdealKey<N> + ToPrimitive + PrimInt,
-    <Coordinate as IdealKey<N>>::Key: ValidKey<Coordinate>,
+		Coordinate: IdealKey<N> + ToPrimitive + PrimInt,
+		<Coordinate as IdealKey<N>>::Key: ValidKey<Coordinate>,
 {
-    morton_encode_array(input)
+	morton_encode_array(input)
 }
 
 /// Receives a `Key` value and unscrambles it into an array.
-/// 
+///
 /// Returns an array of `Coor` values that were decoded from the input.
 ///
 /// Panics if the `Key` value is too small for so many `Coor` values.
@@ -777,18 +775,18 @@ where
 /// ```
 pub fn morton_decode_array<Coordinate, Key, const N: usize>(input: Key) -> [Coordinate; N]
 where
-    Coordinate: ToPrimitive + PrimInt,
-    Key: ValidKey<Coordinate>,
+		Coordinate: ToPrimitive + PrimInt,
+		Key: ValidKey<Coordinate>,
 {
-    let mut result = [Coordinate::zero(); N];
-    for (i, n) in result.iter_mut().rev().enumerate() {
-        *n = shrink_custom::<Coordinate, Key, N>(input >> i);
-    }
-    result
+	let mut result = [Coordinate::zero(); N];
+	for (i, n) in result.iter_mut().rev().enumerate() {
+		*n = shrink_custom::<Coordinate, Key, N>(input >> i);
+	}
+	result
 }
 
 /// The most ergonomic way to perform the Morton decoding operation.
-/// 
+///
 /// Works for all primitive unsigned integers, and never panics for them.
 /// Will work for others if the user implements the `IdealKey`
 /// trait for them, but will panic if the trait is misimplemented.
@@ -806,244 +804,244 @@ where
 /// assert_eq!(input, reassembled_input);
 /// ```
 pub fn morton_decode<Coordinate, const N: usize>(
-    input: <Coordinate as IdealKey<N>>::Key,
+	input: <Coordinate as IdealKey<N>>::Key,
 ) -> [Coordinate; N]
 where
-    Coordinate: IdealKey<N> + ToPrimitive + PrimInt,
-    <Coordinate as IdealKey<N>>::Key: ValidKey<Coordinate>,
+		Coordinate: IdealKey<N> + ToPrimitive + PrimInt,
+		<Coordinate as IdealKey<N>>::Key: ValidKey<Coordinate>,
 {
-    morton_decode_array(input)
+	morton_decode_array(input)
 }
 
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
-    use super::*;
+	use super::*;
 
-    fn fmt_bin<T>(x: T) -> std::string::String
-    where
-        T: std::fmt::Binary,
-    {
-        let size = sizeof!(T);
-        if size == 16 {
-            format!("{:#0130b}", x)
-        } else if size == 8 {
-            format!("{:#066b}", x)
-        } else if size == 4 {
-            format!("{:#034b}", x)
-        } else if size == 2 {
-            format!("{:#018b}", x)
-        } else if size == 1 {
-            format!("{:#010b}", x)
-        } else {
-            format!("{:#b}", x)
-        }
-    }
+	fn fmt_bin<T>(x: T) -> std::string::String
+	where
+			T: std::fmt::Binary,
+	{
+		let size = sizeof!(T);
+		if size == 16 {
+			format!("{:#0130b}", x)
+		} else if size == 8 {
+			format!("{:#066b}", x)
+		} else if size == 4 {
+			format!("{:#034b}", x)
+		} else if size == 2 {
+			format!("{:#018b}", x)
+		} else if size == 1 {
+			format!("{:#010b}", x)
+		} else {
+			format!("{:#b}", x)
+		}
+	}
 
-    fn bloat_slow_custom<Coor, Key>(x: Coor, siz_rat: SizeRatio) -> Key
-    where
-        Coor: ToPrimitive + PrimInt + std::fmt::Binary + core::ops::BitAnd,
-        Key: ValidKey<Coor>,
-        <Key as num_traits::Num>::FromStrRadixErr: std::fmt::Debug,
-    {
-        let coor_siz = sizeof!(Coor);
-        let coor_bits = coor_siz * 8;
-        let key_siz = sizeof!(Key);
-        let siz_rat = siz_rat.get();
-        if siz_rat == 1 {
-            return core::convert::From::from(x);
-        }
-        assert!(siz_rat >= 1 && coor_siz * siz_rat <= key_siz);
-        let key_zero = Key::zero();
-        let coor_zero = Coor::zero();
-        let mut result = key_zero;
-        let get_mask_key = |b| (Key::one()) << (b * siz_rat);
-        let get_mask_coor = |b| (Coor::one()) << b;
-        let tst_bit = |a: Coor, b| (a & get_mask_coor(b)) != coor_zero;
-        let set_bit = |a: &mut Key, b| (*a) |= get_mask_key(b);
-        for bit_examined in 0..coor_bits {
-            if tst_bit(x, bit_examined) {
-                set_bit(&mut result, bit_examined)
-            }
-        }
-        result
-    }
+	fn bloat_slow_custom<Coor, Key>(x: Coor, siz_rat: SizeRatio) -> Key
+	where
+			Coor: ToPrimitive + PrimInt + std::fmt::Binary + core::ops::BitAnd,
+			Key: ValidKey<Coor>,
+			<Key as num_traits::Num>::FromStrRadixErr: std::fmt::Debug,
+	{
+		let coor_siz = sizeof!(Coor);
+		let coor_bits = coor_siz * 8;
+		let key_siz = sizeof!(Key);
+		let siz_rat = siz_rat.get();
+		if siz_rat == 1 {
+			return core::convert::From::from(x);
+		}
+		assert!(siz_rat >= 1 && coor_siz * siz_rat <= key_siz);
+		let key_zero = Key::zero();
+		let coor_zero = Coor::zero();
+		let mut result = key_zero;
+		let get_mask_key = |b| (Key::one()) << (b * siz_rat);
+		let get_mask_coor = |b| (Coor::one()) << b;
+		let tst_bit = |a: Coor, b| (a & get_mask_coor(b)) != coor_zero;
+		let set_bit = |a: &mut Key, b| (*a) |= get_mask_key(b);
+		for bit_examined in 0..coor_bits {
+			if tst_bit(x, bit_examined) {
+				set_bit(&mut result, bit_examined)
+			}
+		}
+		result
+	}
 
-    const MAX_BITS: u8 = 20;
+	const MAX_BITS: u8 = 20;
 
-    fn size_ratio<A, B>() -> SizeRatio
-    where
-        A: From<B>,
-    {
-        nz(sizeof!(A) / sizeof!(B))
-        // The "From" trait ensures that the result is never zero; consequently, this function can never panic.
-    }
+	fn size_ratio<A, B>() -> SizeRatio
+	where
+			A: From<B>,
+	{
+		nz(sizeof!(A) / sizeof!(B))
+		// The "From" trait ensures that the result is never zero; consequently, this function can never panic.
+	}
 
-    fn test_all_possible_values<Coor, Key>(siz_rat: Option<usize>)
-    where
-        Coor: num_traits::ToPrimitive
-            + std::fmt::Binary
-            + core::ops::BitAnd
-            + num::traits::PrimInt
-            + std::fmt::Display
-            + std::fmt::Debug,
-        rand::distributions::Standard: rand::distributions::Distribution<Coor>,
-        Key: num::traits::int::PrimInt
-            + core::convert::From<Coor>
-            + core::ops::BitOrAssign
-            + core::ops::BitAndAssign
-            + std::fmt::Binary
-            + core::ops::ShlAssign<usize>,
-        <Key as num_traits::Num>::FromStrRadixErr: std::fmt::Debug,
-        u128: core::convert::From<Coor>,
-    {
-        let siz_rat = siz_rat
-            .and_then(|x| SizeRatio::new(x))
-            .unwrap_or(size_ratio::<Key, Coor>());
-        let testing_function = |x| bloat_slow_custom::<Coor, Key>(x, siz_rat);
-        let function_under_test = |x| bloat_custom_checked::<Coor, Key>(x, siz_rat).unwrap();
-        let limit = core::cmp::min(u128::from(Coor::max_value()), 1u128 << MAX_BITS);
-        let limit = limit as usize;
-        for x in 0..=limit {
-            let x_ = Coor::from(x).expect("Coor and usize incompatible.");
-            if x % (1 << 26) == 0 && x != 0 {
-                dbg!(x >> 26);
-            }
-            let fn2 = function_under_test(x_);
-            let fn1 = testing_function(x_);
-            if fn1 != fn2 {
-                panic!(
-                    "x = {} \ntesting_function = {}, \nfunction_under_test = {}",
-                    x,
-                    fmt_bin(fn1),
-                    fmt_bin(fn2)
-                )
-            }
-            if x_ != shrink_custom_checked(fn2, siz_rat).unwrap() {
-                panic!(
-                    "x = {} \nBloated = {}, \nShrunk = {}",
-                    x,
-                    fmt_bin(fn2),
-                    shrink_custom_checked(fn2, siz_rat).unwrap()
-                )
-            }
-            if x % 16 == 0 {
-                let input = (0..siz_rat.get())
-                    .map(|_| rand::random::<Coor>())
-                    .collect::<Vec<Coor>>();
-                let encoded_input: Key = morton_encode_generic(input.clone());
-                let reinstated_input: Vec<Coor> = morton_decode_generic(encoded_input, siz_rat);
-                assert_eq!(input, reinstated_input);
-            }
-        }
-    }
+	fn test_all_possible_values<Coor, Key>(siz_rat: Option<usize>)
+	where
+			Coor: num_traits::ToPrimitive
+			+ std::fmt::Binary
+			+ core::ops::BitAnd
+			+ num::traits::PrimInt
+			+ std::fmt::Display
+			+ std::fmt::Debug,
+			rand::distributions::Standard: rand::distributions::Distribution<Coor>,
+			Key: num::traits::int::PrimInt
+			+ core::convert::From<Coor>
+			+ core::ops::BitOrAssign
+			+ core::ops::BitAndAssign
+			+ std::fmt::Binary
+			+ core::ops::ShlAssign<usize>,
+			<Key as num_traits::Num>::FromStrRadixErr: std::fmt::Debug,
+			u128: core::convert::From<Coor>,
+	{
+		let siz_rat = siz_rat
+				.and_then(|x| SizeRatio::new(x))
+				.unwrap_or(size_ratio::<Key, Coor>());
+		let testing_function = |x| bloat_slow_custom::<Coor, Key>(x, siz_rat);
+		let function_under_test = |x| bloat_custom_checked::<Coor, Key>(x, siz_rat).unwrap();
+		let limit = core::cmp::min(u128::from(Coor::max_value()), 1u128 << MAX_BITS);
+		let limit = limit as usize;
+		for x in 0..=limit {
+			let x_ = Coor::from(x).expect("Coor and usize incompatible.");
+			if x % (1 << 26) == 0 && x != 0 {
+				dbg!(x >> 26);
+			}
+			let fn2 = function_under_test(x_);
+			let fn1 = testing_function(x_);
+			if fn1 != fn2 {
+				panic!(
+					"x = {} \ntesting_function = {}, \nfunction_under_test = {}",
+					x,
+					fmt_bin(fn1),
+					fmt_bin(fn2)
+				)
+			}
+			if x_ != shrink_custom_checked(fn2, siz_rat).unwrap() {
+				panic!(
+					"x = {} \nBloated = {}, \nShrunk = {}",
+					x,
+					fmt_bin(fn2),
+					shrink_custom_checked(fn2, siz_rat).unwrap()
+				)
+			}
+			if x % 16 == 0 {
+				let input = (0..siz_rat.get())
+						.map(|_| rand::random::<Coor>())
+						.collect::<Vec<Coor>>();
+				let encoded_input: Key = morton_encode_generic(input.clone());
+				let reinstated_input: Vec<Coor> = morton_decode_generic(encoded_input, siz_rat);
+				assert_eq!(input, reinstated_input);
+			}
+		}
+	}
 
-    #[test]
-    fn test_u8_u16() {
-        test_all_possible_values::<u8, u16>(None);
-    }
-    #[test]
-    fn test_u8_u24() {
-        test_all_possible_values::<u8, u32>(Some(3));
-    }
-    #[test]
-    fn test_u8_u32() {
-        test_all_possible_values::<u8, u32>(None);
-    }
-    #[test]
-    fn test_u8_u40() {
-        test_all_possible_values::<u8, u64>(Some(5));
-    }
-    #[test]
-    fn test_u8_u48() {
-        test_all_possible_values::<u8, u64>(Some(6));
-    }
-    #[test]
-    fn test_u8_u56() {
-        test_all_possible_values::<u8, u64>(Some(7));
-    }
-    #[test]
-    fn test_u8_u64() {
-        test_all_possible_values::<u8, u64>(None);
-    }
-    #[test]
-    fn test_u8_u72() {
-        test_all_possible_values::<u8, u128>(Some(9));
-    }
-    #[test]
-    fn test_u8_u80() {
-        test_all_possible_values::<u8, u128>(Some(10));
-    }
-    #[test]
-    fn test_u8_u88() {
-        test_all_possible_values::<u8, u128>(Some(11));
-    }
-    #[test]
-    fn test_u8_u96() {
-        test_all_possible_values::<u8, u128>(Some(12));
-    }
-    #[test]
-    fn test_u8_u104() {
-        test_all_possible_values::<u8, u128>(Some(13));
-    }
-    #[test]
-    fn test_u8_u112() {
-        test_all_possible_values::<u8, u128>(Some(14));
-    }
-    #[test]
-    fn test_u8_u120() {
-        test_all_possible_values::<u8, u128>(Some(15));
-    }
-    #[test]
-    fn test_u8_u128() {
-        test_all_possible_values::<u8, u128>(None);
-    }
-    #[test]
-    fn test_u16_u32() {
-        test_all_possible_values::<u16, u32>(None);
-    }
-    #[test]
-    fn test_u16_u48() {
-        test_all_possible_values::<u16, u64>(Some(3));
-    }
-    #[test]
-    fn test_u16_u64() {
-        test_all_possible_values::<u16, u64>(None);
-    }
-    #[test]
-    fn test_u16_u80() {
-        test_all_possible_values::<u16, u128>(Some(5));
-    }
-    #[test]
-    fn test_u16_u96() {
-        test_all_possible_values::<u16, u128>(Some(6));
-    }
-    #[test]
-    fn test_u16_u112() {
-        test_all_possible_values::<u16, u128>(Some(7));
-    }
-    #[test]
-    fn test_u16_u128() {
-        test_all_possible_values::<u16, u128>(None);
-    }
-    #[test]
-    fn test_u32_u64() {
-        test_all_possible_values::<u32, u64>(None);
-    }
-    #[test]
-    fn test_u32_u96() {
-        test_all_possible_values::<u32, u128>(Some(3));
-    }
-    #[test]
-    fn test_u32_u128() {
-        test_all_possible_values::<u32, u128>(None);
-    }
-    #[test]
-    fn test_u64_u128() {
-        test_all_possible_values::<u64, u128>(None);
-    }
+	#[test]
+	fn test_u8_u16() {
+		test_all_possible_values::<u8, u16>(None);
+	}
+	#[test]
+	fn test_u8_u24() {
+		test_all_possible_values::<u8, u32>(Some(3));
+	}
+	#[test]
+	fn test_u8_u32() {
+		test_all_possible_values::<u8, u32>(None);
+	}
+	#[test]
+	fn test_u8_u40() {
+		test_all_possible_values::<u8, u64>(Some(5));
+	}
+	#[test]
+	fn test_u8_u48() {
+		test_all_possible_values::<u8, u64>(Some(6));
+	}
+	#[test]
+	fn test_u8_u56() {
+		test_all_possible_values::<u8, u64>(Some(7));
+	}
+	#[test]
+	fn test_u8_u64() {
+		test_all_possible_values::<u8, u64>(None);
+	}
+	#[test]
+	fn test_u8_u72() {
+		test_all_possible_values::<u8, u128>(Some(9));
+	}
+	#[test]
+	fn test_u8_u80() {
+		test_all_possible_values::<u8, u128>(Some(10));
+	}
+	#[test]
+	fn test_u8_u88() {
+		test_all_possible_values::<u8, u128>(Some(11));
+	}
+	#[test]
+	fn test_u8_u96() {
+		test_all_possible_values::<u8, u128>(Some(12));
+	}
+	#[test]
+	fn test_u8_u104() {
+		test_all_possible_values::<u8, u128>(Some(13));
+	}
+	#[test]
+	fn test_u8_u112() {
+		test_all_possible_values::<u8, u128>(Some(14));
+	}
+	#[test]
+	fn test_u8_u120() {
+		test_all_possible_values::<u8, u128>(Some(15));
+	}
+	#[test]
+	fn test_u8_u128() {
+		test_all_possible_values::<u8, u128>(None);
+	}
+	#[test]
+	fn test_u16_u32() {
+		test_all_possible_values::<u16, u32>(None);
+	}
+	#[test]
+	fn test_u16_u48() {
+		test_all_possible_values::<u16, u64>(Some(3));
+	}
+	#[test]
+	fn test_u16_u64() {
+		test_all_possible_values::<u16, u64>(None);
+	}
+	#[test]
+	fn test_u16_u80() {
+		test_all_possible_values::<u16, u128>(Some(5));
+	}
+	#[test]
+	fn test_u16_u96() {
+		test_all_possible_values::<u16, u128>(Some(6));
+	}
+	#[test]
+	fn test_u16_u112() {
+		test_all_possible_values::<u16, u128>(Some(7));
+	}
+	#[test]
+	fn test_u16_u128() {
+		test_all_possible_values::<u16, u128>(None);
+	}
+	#[test]
+	fn test_u32_u64() {
+		test_all_possible_values::<u32, u64>(None);
+	}
+	#[test]
+	fn test_u32_u96() {
+		test_all_possible_values::<u32, u128>(Some(3));
+	}
+	#[test]
+	fn test_u32_u128() {
+		test_all_possible_values::<u32, u128>(None);
+	}
+	#[test]
+	fn test_u64_u128() {
+		test_all_possible_values::<u64, u128>(None);
+	}
 
-    macro_rules! test_functions {
+	macro_rules! test_functions {
         ($encod: ident, $decod: ident, $t1: ty, $t2: ty, $siz_rat: expr) => {
             let max_bits_for_this = (MAX_BITS - 3) as usize;
             let tmp_bit_limit = $siz_rat * sizeof!($t1) * 8;
@@ -1066,35 +1064,35 @@ mod tests {
             }
         };
     }
-    #[test]
-    fn test_all_spec_funcs() {
-        test_functions!(morton_encode_u8_2d, morton_decode_u8_2d, u8, u16, 2);
-        test_functions!(morton_encode_u8_3d, morton_decode_u8_3d, u8, u32, 3);
-        test_functions!(morton_encode_u8_4d, morton_decode_u8_4d, u8, u32, 4);
-        test_functions!(morton_encode_u8_5d, morton_decode_u8_5d, u8, u64, 5);
-        test_functions!(morton_encode_u8_6d, morton_decode_u8_6d, u8, u64, 6);
-        test_functions!(morton_encode_u8_7d, morton_decode_u8_7d, u8, u64, 7);
-        test_functions!(morton_encode_u8_8d, morton_decode_u8_8d, u8, u64, 8);
-        test_functions!(morton_encode_u8_9d, morton_decode_u8_9d, u8, u128, 9);
-        test_functions!(morton_encode_u8_10d, morton_decode_u8_10d, u8, u128, 10);
-        test_functions!(morton_encode_u8_11d, morton_decode_u8_11d, u8, u128, 11);
-        test_functions!(morton_encode_u8_12d, morton_decode_u8_12d, u8, u128, 12);
-        test_functions!(morton_encode_u8_13d, morton_decode_u8_13d, u8, u128, 13);
-        test_functions!(morton_encode_u8_14d, morton_decode_u8_14d, u8, u128, 14);
-        test_functions!(morton_encode_u8_15d, morton_decode_u8_15d, u8, u128, 15);
-        test_functions!(morton_encode_u8_16d, morton_decode_u8_16d, u8, u128, 16);
-        test_functions!(morton_encode_u16_2d, morton_decode_u16_2d, u16, u32, 2);
-        test_functions!(morton_encode_u16_3d, morton_decode_u16_3d, u16, u64, 3);
-        test_functions!(morton_encode_u16_4d, morton_decode_u16_4d, u16, u64, 4);
-        test_functions!(morton_encode_u16_5d, morton_decode_u16_5d, u16, u128, 5);
-        test_functions!(morton_encode_u16_6d, morton_decode_u16_6d, u16, u128, 6);
-        test_functions!(morton_encode_u16_7d, morton_decode_u16_7d, u16, u128, 7);
-        test_functions!(morton_encode_u16_8d, morton_decode_u16_8d, u16, u128, 8);
-        test_functions!(morton_encode_u32_2d, morton_decode_u32_2d, u32, u64, 2);
-        test_functions!(morton_encode_u32_3d, morton_decode_u32_3d, u32, u128, 3);
-        test_functions!(morton_encode_u32_4d, morton_decode_u32_4d, u32, u128, 4);
-        test_functions!(morton_encode_u64_2d, morton_decode_u64_2d, u64, u128, 2);
-    }
+	#[test]
+	fn test_all_spec_funcs() {
+		test_functions!(morton_encode_u8_2d, morton_decode_u8_2d, u8, u16, 2);
+		test_functions!(morton_encode_u8_3d, morton_decode_u8_3d, u8, u32, 3);
+		test_functions!(morton_encode_u8_4d, morton_decode_u8_4d, u8, u32, 4);
+		test_functions!(morton_encode_u8_5d, morton_decode_u8_5d, u8, u64, 5);
+		test_functions!(morton_encode_u8_6d, morton_decode_u8_6d, u8, u64, 6);
+		test_functions!(morton_encode_u8_7d, morton_decode_u8_7d, u8, u64, 7);
+		test_functions!(morton_encode_u8_8d, morton_decode_u8_8d, u8, u64, 8);
+		test_functions!(morton_encode_u8_9d, morton_decode_u8_9d, u8, u128, 9);
+		test_functions!(morton_encode_u8_10d, morton_decode_u8_10d, u8, u128, 10);
+		test_functions!(morton_encode_u8_11d, morton_decode_u8_11d, u8, u128, 11);
+		test_functions!(morton_encode_u8_12d, morton_decode_u8_12d, u8, u128, 12);
+		test_functions!(morton_encode_u8_13d, morton_decode_u8_13d, u8, u128, 13);
+		test_functions!(morton_encode_u8_14d, morton_decode_u8_14d, u8, u128, 14);
+		test_functions!(morton_encode_u8_15d, morton_decode_u8_15d, u8, u128, 15);
+		test_functions!(morton_encode_u8_16d, morton_decode_u8_16d, u8, u128, 16);
+		test_functions!(morton_encode_u16_2d, morton_decode_u16_2d, u16, u32, 2);
+		test_functions!(morton_encode_u16_3d, morton_decode_u16_3d, u16, u64, 3);
+		test_functions!(morton_encode_u16_4d, morton_decode_u16_4d, u16, u64, 4);
+		test_functions!(morton_encode_u16_5d, morton_decode_u16_5d, u16, u128, 5);
+		test_functions!(morton_encode_u16_6d, morton_decode_u16_6d, u16, u128, 6);
+		test_functions!(morton_encode_u16_7d, morton_decode_u16_7d, u16, u128, 7);
+		test_functions!(morton_encode_u16_8d, morton_decode_u16_8d, u16, u128, 8);
+		test_functions!(morton_encode_u32_2d, morton_decode_u32_2d, u32, u64, 2);
+		test_functions!(morton_encode_u32_3d, morton_decode_u32_3d, u32, u128, 3);
+		test_functions!(morton_encode_u32_4d, morton_decode_u32_4d, u32, u128, 4);
+		test_functions!(morton_encode_u64_2d, morton_decode_u64_2d, u64, u128, 2);
+	}
 }
 
 #[cfg(feature = "std")]
@@ -1103,207 +1101,207 @@ mod tests {
 /// correctly, but the author makes absolutely no guarantees about
 /// how performant they are.
 pub mod arbitrary_bit_size {
-    use super::*;
-    use num::BigUint;
-    /// A convenience function for converting primitive values to BigUints.
-    /// Will fail to compile if called with a literal that's not explicitly
-    /// declared as unsigned.
-    ///
-    /// Unavailable if compiled with `no_std`.
-    pub fn tobuint<Coor>(x: Coor) -> BigUint
-    where
-        Coor: num::Unsigned,
-        num::BigUint: core::convert::From<Coor>,
-    {
-        BigUint::from(x)
-    }
+	use super::*;
+	use num::BigUint;
+	/// A convenience function for converting primitive values to BigUints.
+	/// Will fail to compile if called with a literal that's not explicitly
+	/// declared as unsigned.
+	///
+	/// Unavailable if compiled with `no_std`.
+	pub fn tobuint<Coor>(x: Coor) -> BigUint
+	where
+			Coor: num::Unsigned,
+			num::BigUint: core::convert::From<Coor>,
+	{
+		BigUint::from(x)
+	}
 
-    fn get_mask_biguint(
-        step_number: usize,
-        siz_rat: SizeRatio,
-        key_bits: usize,
-    ) -> Option<num::BigUint> {
-        use num_traits::identities::One;
+	fn get_mask_biguint(
+		step_number: usize,
+		siz_rat: SizeRatio,
+		key_bits: usize,
+	) -> Option<num::BigUint> {
+		use num_traits::identities::One;
 
-        let siz_rat = siz_rat.get();
-        let tentative_mask = {
-            let one_1 = BigUint::one();
-            let amount_of_1s_per_pattern = 1 << step_number;
-            let pattern = (one_1 << amount_of_1s_per_pattern) - BigUint::one();
-            let mut insert_patterns_here = pattern.clone();
-            let pattern_length = siz_rat * amount_of_1s_per_pattern;
-            let amt_of_patterns_that_fit_in_key = key_bits / pattern_length;
-            let amt_of_patterns_we_still_need_to_insert = amt_of_patterns_that_fit_in_key - 1;
-            for _ in 0..amt_of_patterns_we_still_need_to_insert {
-                insert_patterns_here <<= pattern_length;
-                insert_patterns_here |= pattern.clone();
-            }
-            insert_patterns_here
-        };
+		let siz_rat = siz_rat.get();
+		let tentative_mask = {
+			let one_1 = BigUint::one();
+			let amount_of_1s_per_pattern = 1 << step_number;
+			let pattern = (one_1 << amount_of_1s_per_pattern) - BigUint::one();
+			let mut insert_patterns_here = pattern.clone();
+			let pattern_length = siz_rat * amount_of_1s_per_pattern;
+			let amt_of_patterns_that_fit_in_key = key_bits / pattern_length;
+			let amt_of_patterns_we_still_need_to_insert = amt_of_patterns_that_fit_in_key - 1;
+			for _ in 0..amt_of_patterns_we_still_need_to_insert {
+				insert_patterns_here <<= pattern_length;
+				insert_patterns_here |= pattern.clone();
+			}
+			insert_patterns_here
+		};
 
-        let masking_is_necessary = {
-            let floor_of_log2_of_siz_rat =
-                8 * (sizeof!(usize) as u32) - siz_rat.leading_zeros() - 1;
-            (step_number as u32) % floor_of_log2_of_siz_rat == 0
-        };
-        if masking_is_necessary {
-            Some(tentative_mask)
-        } else {
-            None
-        }
-    }
+		let masking_is_necessary = {
+			let floor_of_log2_of_siz_rat =
+					8 * (sizeof!(usize) as u32) - siz_rat.leading_zeros() - 1;
+			(step_number as u32) % floor_of_log2_of_siz_rat == 0
+		};
+		if masking_is_necessary {
+			Some(tentative_mask)
+		} else {
+			None
+		}
+	}
 
-    /// “Bloats” a given number to an arbitrarily large BigUint.
-    ///
-    /// Each bit of the input is interleaved with `siz_rat - 1` zeroes.
-    ///
-    /// This function assumes that the user will not need to use numbers larger than
-    ///`usize::max_value()` bytes in size.
-    ///
-    /// Unavailable if compiled with `no_std`.
-    ///
-    /// # Examples
-    /// ```
-    /// # use morton_encoding::arbitrary_bit_size::bloat_custom_biguint;
-    /// # use morton_encoding::nz;
-    /// # use morton_encoding::arbitrary_bit_size::tobuint;
-    /// # use num::BigUint;
-    /// assert_eq!(bloat_custom_biguint(1u32, nz(2)), tobuint(1u8));
-    /// assert_eq!(bloat_custom_biguint(u128::max_value(), nz(32)), BigUint::new(vec!(1u32; 128)));
-    /// ```
-    pub fn bloat_custom_biguint<Coor>(x: Coor, siz_rat: SizeRatio) -> num::BigUint
-    where
-        Coor: num_traits::ToPrimitive,
-        num::BigUint: core::convert::From<Coor>,
-    {
-        let coor_siz = sizeof!(Coor);
-        let key_siz = coor_siz * siz_rat.get();
+	/// “Bloats” a given number to an arbitrarily large BigUint.
+	///
+	/// Each bit of the input is interleaved with `siz_rat - 1` zeroes.
+	///
+	/// This function assumes that the user will not need to use numbers larger than
+	///`usize::max_value()` bytes in size.
+	///
+	/// Unavailable if compiled with `no_std`.
+	///
+	/// # Examples
+	/// ```
+	/// # use morton_encoding::arbitrary_bit_size::bloat_custom_biguint;
+	/// # use morton_encoding::nz;
+	/// # use morton_encoding::arbitrary_bit_size::tobuint;
+	/// # use num::BigUint;
+	/// assert_eq!(bloat_custom_biguint(1u32, nz(2)), tobuint(1u8));
+	/// assert_eq!(bloat_custom_biguint(u128::max_value(), nz(32)), BigUint::new(vec!(1u32; 128)));
+	/// ```
+	pub fn bloat_custom_biguint<Coor>(x: Coor, siz_rat: SizeRatio) -> num::BigUint
+	where
+			Coor: num_traits::ToPrimitive,
+			num::BigUint: core::convert::From<Coor>,
+	{
+		let coor_siz = sizeof!(Coor);
+		let key_siz = coor_siz * siz_rat.get();
 
-        let mut result = num::BigUint::from(x);
-        if siz_rat.get() == 1 {
-            return result;
-        }
+		let mut result = num::BigUint::from(x);
+		if siz_rat.get() == 1 {
+			return result;
+		}
 
-        let shift_bitor_mask = |x: &mut num::BigUint, y| {
-            let shift_amt = (siz_rat.get() - 1) << y;
-            *x |= ((*x).clone()) << shift_amt;
-            if let Some(mask) = get_mask_biguint(y, siz_rat, key_siz * 8) {
-                (*x) &= mask;
-            }
-        };
+		let shift_bitor_mask = |x: &mut num::BigUint, y| {
+			let shift_amt = (siz_rat.get() - 1) << y;
+			*x |= ((*x).clone()) << shift_amt;
+			if let Some(mask) = get_mask_biguint(y, siz_rat, key_siz * 8) {
+				(*x) &= mask;
+			}
+		};
 
-        let op_amt = coor_siz.next_power_of_two().trailing_zeros() + 3;
-        (0..op_amt)
-            .rev()
-            .for_each(|q| shift_bitor_mask(&mut result, q as usize));
-        result
-    }
+		let op_amt = coor_siz.next_power_of_two().trailing_zeros() + 3;
+		(0..op_amt)
+				.rev()
+				.for_each(|q| shift_bitor_mask(&mut result, q as usize));
+		result
+	}
 
-    /// “Shrinks” a given number from an arbitrarily large BigUint.
-    ///
-    /// The 0th bit is always kept, as is every `siz_rat`th bit thereafter.
-    ///
-    /// This function sanitises its input, such that the bits that are thrown away do not need to be cleared by the user. It is also assumed that the user will not need to use numbers larger than `usize::max_value()` bytes in size.
-    ///
-    /// Unavailable if compiled with `no_std`.
-    ///
-    /// # Examples
-    /// ```
-    /// # use morton_encoding::arbitrary_bit_size::shrink_custom_biguint;
-    /// # use morton_encoding::nz;
-    /// # use morton_encoding::arbitrary_bit_size::tobuint;
-    /// assert_eq!(shrink_custom_biguint(tobuint(1u8), nz(2)), tobuint(1u8));
-    /// assert_eq!(shrink_custom_biguint(num::BigUint::new(vec!(3u32; 128)), nz(32)), num::BigUint::new(vec!(u32::max_value(); 4)));
-    /// ```
-    pub fn shrink_custom_biguint(x: BigUint, siz_rat: SizeRatio) -> num::BigUint {
-        use num_traits::identities::One;
+	/// “Shrinks” a given number from an arbitrarily large BigUint.
+	///
+	/// The 0th bit is always kept, as is every `siz_rat`th bit thereafter.
+	///
+	/// This function sanitises its input, such that the bits that are thrown away do not need to be cleared by the user. It is also assumed that the user will not need to use numbers larger than `usize::max_value()` bytes in size.
+	///
+	/// Unavailable if compiled with `no_std`.
+	///
+	/// # Examples
+	/// ```
+	/// # use morton_encoding::arbitrary_bit_size::shrink_custom_biguint;
+	/// # use morton_encoding::nz;
+	/// # use morton_encoding::arbitrary_bit_size::tobuint;
+	/// assert_eq!(shrink_custom_biguint(tobuint(1u8), nz(2)), tobuint(1u8));
+	/// assert_eq!(shrink_custom_biguint(num::BigUint::new(vec!(3u32; 128)), nz(32)), num::BigUint::new(vec!(u32::max_value(); 4)));
+	/// ```
+	pub fn shrink_custom_biguint(x: BigUint, siz_rat: SizeRatio) -> num::BigUint {
+		use num_traits::identities::One;
 
-        let key_bits = x.bits() + siz_rat.get() - 1;
-        let coor_bits = key_bits / siz_rat.get();
-        let key_bits = coor_bits * siz_rat.get();
+		let key_bits = x.bits() + siz_rat.get() - 1;
+		let coor_bits = key_bits / siz_rat.get();
+		let key_bits = coor_bits * siz_rat.get();
 
-        let mut result = x;
-        if siz_rat.get() == 1 {
-            return result;
-        }
+		let mut result = x;
+		if siz_rat.get() == 1 {
+			return result;
+		}
 
-        let shift_bitor_mask = |x: &mut BigUint, y| {
-            if let Some(mask) = get_mask_biguint(y, siz_rat, key_bits) {
-                (*x) &= mask;
-            }
-            //dbg!(x);
-            let shift_amt = (siz_rat.get() - 1) << y;
-            *x |= ((*x).clone()) >> shift_amt;
-        };
+		let shift_bitor_mask = |x: &mut BigUint, y| {
+			if let Some(mask) = get_mask_biguint(y, siz_rat, key_bits) {
+				(*x) &= mask;
+			}
+			//dbg!(x);
+			let shift_amt = (siz_rat.get() - 1) << y;
+			*x |= ((*x).clone()) >> shift_amt;
+		};
 
-        let step_amount = coor_bits.next_power_of_two().trailing_zeros();
-        (0..step_amount).for_each(|q| shift_bitor_mask(&mut result, q as usize));
+		let step_amount = coor_bits.next_power_of_two().trailing_zeros();
+		(0..step_amount).for_each(|q| shift_bitor_mask(&mut result, q as usize));
 
-        let final_mask = {
-            let mut tmpmask = BigUint::one();
-            tmpmask <<= coor_bits;
-            tmpmask - BigUint::one()
-        };
+		let final_mask = {
+			let mut tmpmask = BigUint::one();
+			tmpmask <<= coor_bits;
+			tmpmask - BigUint::one()
+		};
 
-        result & final_mask
-    }
+		result & final_mask
+	}
 
-    /// Receives an iterator of `Coor` values and encodes them all in a `BigUint`.
-    ///
-    /// Unavailable if compiled with `no_std`.
-    ///
-    /// # Examples
-    /// ```
-    /// # use morton_encoding::arbitrary_bit_size::morton_encode_biguint;
-    /// # use morton_encoding::nz;
-    /// # use morton_encoding::arbitrary_bit_size::tobuint;
-    /// let input = vec!(0u8, 255u8);
-    /// let result = morton_encode_biguint(input);
-    /// assert_eq!(result, tobuint(0x5555u16));
-    /// ```
-    pub fn morton_encode_biguint<Coor, Coors>(coors: Coors) -> BigUint
-    where
-        Coor: ToPrimitive,
-        num::BigUint: core::convert::From<Coor>,
-        Coors: IntoIterator<Item = Coor>,
-        <Coors as core::iter::IntoIterator>::IntoIter: ExactSizeIterator,
-    {
-        let zero = BigUint::new(vec![0u32]);
-        let iterator = coors.into_iter();
-        if let Some(siz_rat) = SizeRatio::new(iterator.len()) {
-            let bloat_fn = |x: Coor| bloat_custom_biguint::<Coor>(x, siz_rat);
-            iterator.map(bloat_fn).fold(zero, |acc, x| (acc << 1) | x)
-        } else {
-            zero
-        }
-    }
+	/// Receives an iterator of `Coor` values and encodes them all in a `BigUint`.
+	///
+	/// Unavailable if compiled with `no_std`.
+	///
+	/// # Examples
+	/// ```
+	/// # use morton_encoding::arbitrary_bit_size::morton_encode_biguint;
+	/// # use morton_encoding::nz;
+	/// # use morton_encoding::arbitrary_bit_size::tobuint;
+	/// let input = vec!(0u8, 255u8);
+	/// let result = morton_encode_biguint(input);
+	/// assert_eq!(result, tobuint(0x5555u16));
+	/// ```
+	pub fn morton_encode_biguint<Coor, Coors>(coors: Coors) -> BigUint
+	where
+			Coor: ToPrimitive,
+			num::BigUint: core::convert::From<Coor>,
+			Coors: IntoIterator<Item=Coor>,
+			<Coors as core::iter::IntoIterator>::IntoIter: ExactSizeIterator,
+	{
+		let zero = BigUint::new(vec![0u32]);
+		let iterator = coors.into_iter();
+		if let Some(siz_rat) = SizeRatio::new(iterator.len()) {
+			let bloat_fn = |x: Coor| bloat_custom_biguint::<Coor>(x, siz_rat);
+			iterator.map(bloat_fn).fold(zero, |acc, x| (acc << 1) | x)
+		} else {
+			zero
+		}
+	}
 
-    /// Receives a `BigUint` value and returns an iterator of `BigUint` values that were decoded from it.
-    ///
-    /// Unavailable if compiled with `no_std`.
-    ///
-    /// # Examples
-    /// ```
-    /// # use morton_encoding::arbitrary_bit_size::morton_decode_biguint;
-    /// # use morton_encoding::arbitrary_bit_size::morton_encode_biguint;
-    /// # use morton_encoding::nz;
-    /// # use morton_encoding::arbitrary_bit_size::tobuint;
-    /// assert_eq!(morton_decode_biguint::<Vec<_>>(tobuint(3u8), nz(2)), vec!(tobuint(1u8); 2));
-    /// let input = vec!(tobuint(1u8), tobuint(2u8));
-    /// let encoded_input = morton_encode_biguint(input.clone());
-    /// let reassembled_input: Vec<_> = morton_decode_biguint(encoded_input, nz(2));
-    /// assert_eq!(input, reassembled_input);
-    /// ```
-    pub fn morton_decode_biguint<Coors>(key: BigUint, siz_rat: SizeRatio) -> Coors
-    where
-        Coors: core::iter::FromIterator<BigUint> + IntoIterator<Item = BigUint>,
-        <Coors as core::iter::IntoIterator>::IntoIter: ExactSizeIterator,
-    {
-        let shrink_fn = |x: BigUint| shrink_custom_biguint(x, siz_rat);
-        let siz_rat = siz_rat.get();
-        (0..siz_rat)
-            .map(|x| key.clone() >> (siz_rat - (x + 1)))
-            .map(shrink_fn)
-            .collect::<Coors>()
-    }
+	/// Receives a `BigUint` value and returns an iterator of `BigUint` values that were decoded from it.
+	///
+	/// Unavailable if compiled with `no_std`.
+	///
+	/// # Examples
+	/// ```
+	/// # use morton_encoding::arbitrary_bit_size::morton_decode_biguint;
+	/// # use morton_encoding::arbitrary_bit_size::morton_encode_biguint;
+	/// # use morton_encoding::nz;
+	/// # use morton_encoding::arbitrary_bit_size::tobuint;
+	/// assert_eq!(morton_decode_biguint::<Vec<_>>(tobuint(3u8), nz(2)), vec!(tobuint(1u8); 2));
+	/// let input = vec!(tobuint(1u8), tobuint(2u8));
+	/// let encoded_input = morton_encode_biguint(input.clone());
+	/// let reassembled_input: Vec<_> = morton_decode_biguint(encoded_input, nz(2));
+	/// assert_eq!(input, reassembled_input);
+	/// ```
+	pub fn morton_decode_biguint<Coors>(key: BigUint, siz_rat: SizeRatio) -> Coors
+	where
+			Coors: core::iter::FromIterator<BigUint> + IntoIterator<Item=BigUint>,
+			<Coors as core::iter::IntoIterator>::IntoIter: ExactSizeIterator,
+	{
+		let shrink_fn = |x: BigUint| shrink_custom_biguint(x, siz_rat);
+		let siz_rat = siz_rat.get();
+		(0..siz_rat)
+				.map(|x| key.clone() >> (siz_rat - (x + 1)))
+				.map(shrink_fn)
+				.collect::<Coors>()
+	}
 }
